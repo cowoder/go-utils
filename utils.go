@@ -48,7 +48,13 @@ func (u *Utils) UploadFiles(r *http.Request, uploadDir string, rename ...bool) (
 		u.MaxFileSize = 1024 * 1024 * 1024 // 1GB
 	}
 
-	err := r.ParseMultipartForm(int64(u.MaxFileSize))
+	err := u.CreateDirIfNotExists(uploadDir)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.ParseMultipartForm(int64(u.MaxFileSize))
 
 	if err != nil {
 		return nil, errors.New("the uploaded file exceeds the maximum file size")
@@ -149,4 +155,18 @@ func (u *Utils) UploadFile(r *http.Request, uploadDir string, rename ...bool) (*
 	}
 
 	return files[0], nil
+}
+
+func (u *Utils) CreateDirIfNotExists(dir string) error {
+	const mode = 0755
+
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		err := os.MkdirAll(dir, mode)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
