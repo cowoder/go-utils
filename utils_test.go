@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
 	"image"
 	"image/png"
 	"io"
 	"mime/multipart"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"sync"
@@ -234,5 +236,74 @@ func TestUtils_DownloadStaticFile(t *testing.T) {
 
 	if err != nil {
 		t.Error("error reading response body", err)
+	}
+}
+
+var jsonTests = []struct {
+	name               string
+	input              string
+	errorExpected      bool
+	maxSize            int
+	allowUnknownFields bool
+}{
+	{name: "valid json", input: `{"name": "John Doe"}`, errorExpected: false, maxSize: 1024, allowUnknownFields: false},
+	{name: "invalid json", input: `{"name":`, errorExpected: true, maxSize: 1024, allowUnknownFields: false},
+	{name: "incorrect type", input: `{"name": 123`, errorExpected: true, maxSize: 1024, allowUnknownFields: false},
+	{name: "two json files", input: `{"name": "John Doe"}{"name": "John Doe"}`, errorExpected: true, maxSize: 1024, allowUnknownFields: false},
+	{name: "empty body", input: ``, errorExpected: true, maxSize: 1024, allowUnknownFields: false},
+	{name: "syntax error", input: `{"name": John Doe"}`, errorExpected: true, maxSize: 1024, allowUnknownFields: false},
+	{name: "unknown field", input: `{"full_name": "John Doe"}`, errorExpected: true, maxSize: 1024, allowUnknownFields: false},
+	{name: "allow unknown field", input: `{"full_name": "John Doe"}`, errorExpected: false, maxSize: 1024, allowUnknownFields: true},
+	{name: "missing field name", input: `{name: "John Doe"}`, errorExpected: true, maxSize: 1024, allowUnknownFields: true},
+	{name: "file too large", input: `{"name": "John Doe"}`, errorExpected: true, maxSize: 1, allowUnknownFields: true},
+	{name: "not json", input: `"name: John Doe"`, errorExpected: true, maxSize: 1024, allowUnknownFields: true},
+}
+
+func TestUtils_ReadJSON(t *testing.T) {
+	var testUtils Utils
+
+	for _, e := range jsonTests {
+		testUtils.MaxJSONSize = e.maxSize
+		testUtils.AllowUnknownFields = e.allowUnknownFields
+
+		var decodedJSON struct {
+			Name string `json:"name"`
+		}
+
+		req := httptest.NewRequest("POST", "/", bytes.NewReader([]byte(e.input)))
+
+		rr := httptest.NewRecorder()
+
+		err := testUtils.ReadJSON(rr, req, &decodedJSON)
+
+		if e.errorExpected && err == nil {
+			t.Errorf("%s: error expected but none received", e.name)
+		}
+
+		if !e.errorExpected && err != nil {
+			t.Errorf("%s: error received but none expected: %s", e.name, err.Error())
+		}
+
+		req.Body.Close()
+	}
+}
+
+func TestUtils_WriteJSON(t *testing.T) {
+	var testUtils Utils
+
+	rr := httptest.NewRecorder()
+
+	payload := JSONResponse{
+		Error:   false,
+		Message: "Hello World!",
+	}
+
+	headers := make(http.Header)
+	headers.Add("HELLO", "WORLD")
+
+	err := testUtils.WriteJSON(rr, http.StatusOK, payload, headers)
+
+	if err != nil {
+		t.Error("error writing json", err)
 	}
 }
