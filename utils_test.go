@@ -208,3 +208,31 @@ func TestUtils_Slugify(t *testing.T) {
 }
 
 func TestUtils_CtrlC(t *testing.T) {}
+
+func TestUtils_DownloadStaticFile(t *testing.T) {
+	rr := httptest.NewRecorder()
+
+	req := httptest.NewRequest("GET", "/", nil)
+
+	var testUtils Utils
+
+	testUtils.DownloadStaticFile(rr, req, "./testdata", "img.png", "test.png")
+
+	res := rr.Result()
+
+	defer res.Body.Close()
+
+	if res.Header["Content-Length"][0] != "30691" {
+		t.Error("invalid content length of:", res.Header["Content-Length"][0])
+	}
+
+	if res.Header["Content-Disposition"][0] != "attachment; filename=\"test.png\"" {
+		t.Error("invalid content disposition of:", res.Header["Content-Disposition"][0])
+	}
+
+	_, err := io.ReadAll(res.Body)
+
+	if err != nil {
+		t.Error("error reading response body", err)
+	}
+}

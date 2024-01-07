@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -207,4 +208,11 @@ func (u *Utils) CtrlC(shutdownProcesses ...func()) {
 	}
 
 	os.Exit(0)
+}
+
+// Downloads a file and tries to force the browser to download it
+func (u *Utils) DownloadStaticFile(w http.ResponseWriter, r *http.Request, p string, file string, displayName string) {
+	filePath := path.Join(p, file)
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", displayName))
+	http.ServeFile(w, r, filePath)
 }
