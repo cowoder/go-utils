@@ -7,9 +7,11 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 )
 
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -186,4 +188,22 @@ func (u *Utils) Slugify(text string) (string, error) {
 	}
 
 	return slug, nil
+}
+
+func (u *Utils) CtrlC(shutdownProcesses ...func()) {
+	done := make(chan os.Signal, 2)
+
+	signal.Notify(done, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+
+	fmt.Println("Running, press ctrl+c to quit")
+
+	<-done
+
+	fmt.Println("Shutting down...")
+
+	for _, shutdownProcess := range shutdownProcesses {
+		shutdownProcess()
+	}
+
+	os.Exit(0)
 }

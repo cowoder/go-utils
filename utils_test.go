@@ -206,3 +206,5 @@ func TestUtils_Slugify(t *testing.T) {
 		}
 	}
 }
+
+func TestUtils_CtrlC(t *testing.T) {}
