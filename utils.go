@@ -190,6 +190,7 @@ func (u *Utils) Slugify(text string) (string, error) {
 	return slug, nil
 }
 
+// Call this function as a goroutine
 func (u *Utils) CtrlC(shutdownProcesses ...func()) {
 	done := make(chan os.Signal, 2)
 
