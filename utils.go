@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -311,4 +312,50 @@ func (u *Utils) WriteJSON(w http.ResponseWriter, status int, data interface{}, h
 	}
 
 	return nil
+}
+
+func (u *Utils) ErrorJSON(w http.ResponseWriter, err error, status ...int) error {
+	statusCode := http.StatusBadRequest
+
+	if len(status) > 0 {
+		statusCode = status[0]
+	}
+
+	var payload JSONResponse
+	payload.Error = true
+	payload.Message = err.Error()
+
+	return u.WriteJSON(w, statusCode, payload)
+}
+
+func (u *Utils) PushJSONToRemote(uri string, data interface{}, client ...*http.Client) (*http.Response, int, error) {
+	jsonData, err := json.Marshal(data)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	httpClient := &http.Client{}
+
+	if len(client) > 0 {
+		httpClient = client[0]
+	}
+
+	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(jsonData))
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	defer resp.Body.Close()
+
+	return resp, resp.StatusCode, nil
 }

@@ -2,6 +2,8 @@ package utils
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/png"
@@ -13,6 +15,18 @@ import (
 	"sync"
 	"testing"
 )
+
+type RoundTripFunc func(req *http.Request) *http.Response
+
+func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req), nil
+}
+
+func NewTestClient(fn RoundTripFunc) *http.Client {
+	return &http.Client{
+		Transport: fn,
+	}
+}
 
 func TestUtils_RandomString(t *testing.T) {
 	var testUtils Utils
@@ -305,5 +319,59 @@ func TestUtils_WriteJSON(t *testing.T) {
 
 	if err != nil {
 		t.Error("error writing json", err)
+	}
+}
+
+func TestUtils_ErrorJSON(t *testing.T) {
+	var testUtils Utils
+
+	rr := httptest.NewRecorder()
+
+	err := testUtils.ErrorJSON(rr, errors.New("dummy error"), http.StatusServiceUnavailable)
+
+	if err != nil {
+		t.Error("error writing json", err)
+	}
+
+	var response JSONResponse
+
+	decoder := json.NewDecoder(rr.Body)
+
+	err = decoder.Decode(&response)
+
+	if err != nil {
+		t.Error("error decoding json", err)
+	}
+
+	if !response.Error {
+		t.Error("error expected but none received")
+	}
+
+	if rr.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected status code %d; got %d", http.StatusServiceUnavailable, rr.Code)
+	}
+}
+
+func TestUtils_PushJSONToRemote(t *testing.T) {
+	client := NewTestClient(func(req *http.Request) *http.Response {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(bytes.NewBufferString("ok")),
+			Header:     make(http.Header),
+		}
+	})
+
+	var testUtils Utils
+
+	var payload struct {
+		Data string `json:"data"`
+	}
+
+	payload.Data = "Hello World!"
+
+	_, _, err := testUtils.PushJSONToRemote("http://example.com/some", payload, client)
+
+	if err != nil {
+		t.Error("error pushing json to remote", err)
 	}
 }
