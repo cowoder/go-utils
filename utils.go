@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -169,4 +170,20 @@ func (u *Utils) CreateDirIfNotExists(dir string) error {
 	}
 
 	return nil
+}
+
+func (u *Utils) Slugify(text string) (string, error) {
+	if text == "" {
+		return "", errors.New("the input cannot be empty")
+	}
+
+	var regx = regexp.MustCompile(`[^a-z\d]+`)
+
+	slug := strings.Trim(regx.ReplaceAllString(strings.ToLower(text), "-"), "-")
+
+	if len(slug) == 0 {
+		return "", errors.New("invalid input, the slug is empty")
+	}
+
+	return slug, nil
 }
