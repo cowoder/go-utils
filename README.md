@@ -2,4 +2,4 @@
 
 ## Install
 
-`go get gowoder.com/go-utils`
+`go get github.com/cowoder/go-utils`
