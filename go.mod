@@ -1,3 +1,3 @@
-module gowoder.com/go-utils
+module github.com/cowoder/go-utils
 
 go 1.21.5
